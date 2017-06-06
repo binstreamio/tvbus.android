@@ -1,0 +1,70 @@
+<android.support.constraint.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <VideoView
+        android:id="@+id/video_view"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        app:layout_constraintDimensionRatio="16:9"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+    <TextView
+        android:id="@+id/text_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:background="#46f5ff"
+
+        android:gravity="right"
+        android:paddingRight="8dp"
+        android:paddingLeft="8dp"
+
+        android:text="Initing ..."
+        android:textAppearance="?android:textAppearanceMedium"
+        android:textColor="#ffffff"
+
+
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
+
+
+    <TextView
+        android:id="@+id/text"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:background="@android:color/darker_gray"
+        android:padding="2dp"
+        android:text="Channels"
+        android:textAlignment="center"
+        android:textAppearance="?android:textAppearanceLarge"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintTop_toBottomOf="@+id/video_view" />
+
+    <ListView
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:id="@+id/list_view"
+        app:layout_constraintTop_toBottomOf="@+id/text"
+        app:layout_constraintLeft_toLeftOf="parent"
+        app:layout_constraintRight_toRightOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"/>
+
+    <ImageButton
+        android:id="@+id/button_refresh"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:src="@drawable/ic_refresh"
+        android:layout_margin="5dp"
+        android:background="#00ffffff"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintRight_toRightOf="parent" />
+
+
+</android.support.constraint.ConstraintLayout>
