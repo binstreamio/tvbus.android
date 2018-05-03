@@ -2,9 +2,9 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/SopPlus.iml" filepath="$PROJECT_DIR$/SopPlus.iml" />
       <module fileurl="file://$PROJECT_DIR$/sopplus/sopplus.iml" filepath="$PROJECT_DIR$/sopplus/sopplus.iml" />
       <module fileurl="file://$PROJECT_DIR$/tvbus/tvbus.iml" filepath="$PROJECT_DIR$/tvbus/tvbus.iml" />
+      <module fileurl="file://$PROJECT_DIR$/tvbus.android.iml" filepath="$PROJECT_DIR$/tvbus.android.iml" />
     </modules>
   </component>
 </project>
