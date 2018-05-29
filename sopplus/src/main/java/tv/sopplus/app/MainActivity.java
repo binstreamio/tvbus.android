@@ -326,7 +326,7 @@ public class MainActivity extends Activity {
             private String getChannels() {
                 URL url;
                 try {
-                    url = new URL("http://chlist.sopplus.tv/v1/channels");
+                    url = new URL("http://chlist.sopplus.tv/v2/channels");
                 } catch (MalformedURLException e) {
                     Log.d(TAG, e.toString());
                     return null;
