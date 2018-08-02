@@ -1,4 +1,4 @@
-package tv.sopplus.app;
+package io.binstream.github.demo;
 
 import android.app.Activity;
 import android.content.Intent;
