@@ -2,9 +2,8 @@ package io.binstream.github.demo;
 
 import android.app.Activity;
 import android.content.Intent;
-import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
@@ -12,7 +11,6 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
-import android.widget.VideoView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -28,6 +26,21 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
+import com.google.android.exoplayer2.C;
+import com.google.android.exoplayer2.DefaultLoadControl;
+import com.google.android.exoplayer2.DefaultRenderersFactory;
+import com.google.android.exoplayer2.ExoPlayerFactory;
+import com.google.android.exoplayer2.LoadControl;
+import com.google.android.exoplayer2.Player;
+import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.source.ExtractorMediaSource;
+import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
+import com.google.android.exoplayer2.trackselection.TrackSelector;
+import com.google.android.exoplayer2.ui.PlayerView;
+import com.google.android.exoplayer2.upstream.DataSource;
+import com.google.android.exoplayer2.upstream.DefaultAllocator;
+import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.tvbus.engine.TVCore;
 import com.tvbus.engine.TVListener;
 import com.tvbus.engine.TVService;
@@ -45,27 +58,27 @@ public class MainActivity extends Activity {
 
     private final static long MP_START_CHECK_INTERVAL = 10 * 1000 * 1000 * 1000L; // 10 second
 
-    private VideoView mVideoView;
     private TextView mStatusView;
+    private SimpleExoPlayer player;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        mVideoView = (VideoView)findViewById(R.id.video_view);
-        mStatusView = (TextView)findViewById(R.id.text_status);
+        mStatusView = findViewById(R.id.text_status);
 
-        loadChannelList();
+        initExoPlayer();
 
         startTVBusService();
 
         findViewById(R.id.button_refresh).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                loadChannelList();
+                MainActivity.this.loadChannelList();
             }
         });
+        loadChannelList();
     }
 
     @Override
@@ -158,9 +171,9 @@ public class MainActivity extends Activity {
             case "onStart":
                 break;
 
-            case "onPrepared":
-                if(jsonObj.optString("hls", null) != null) {
-                    playbackUrl = jsonObj.optString("hls", null);
+            case "onPrepared": // use http-mpegts as source
+                if(jsonObj.optString("http", null) != null) {
+                    playbackUrl = jsonObj.optString("http", null);
                     break;
                 }
 
@@ -214,7 +227,8 @@ public class MainActivity extends Activity {
                 }
 
                 if(System.nanoTime() > mMPCheckTime) {
-                    if (! mVideoView.isPlaying()) {
+                    int playbackState = player.getPlaybackState();
+                    if (! (playbackState != Player.STATE_IDLE && playbackState != Player.STATE_ENDED)) {
                         startPlayback();
                     }
                 }
@@ -226,7 +240,7 @@ public class MainActivity extends Activity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
-                mVideoView.stopPlayback();
+                player.stop();
             }
         });
     }
@@ -236,53 +250,55 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 mMPCheckTime = System.nanoTime() + MP_START_CHECK_INTERVAL;
+                DataSource.Factory dataSourceFactory =
+                        new DefaultDataSourceFactory(MainActivity.this,"tvbus",null);
+                MediaSource videoSource = new ExtractorMediaSource.Factory(dataSourceFactory)
+                            .createMediaSource(Uri.parse(playbackUrl));
 
-                MediaPlayer.OnPreparedListener pListener = new MediaPlayer.OnPreparedListener() {
-                    @Override
-                    public void onPrepared(MediaPlayer mediaPlayer) {
-                        mediaPlayer.start();
-                    }
-                };
-
-                MediaPlayer.OnErrorListener errorListener = new MediaPlayer.OnErrorListener() {
-                    @Override
-                    public boolean onError(MediaPlayer mediaPlayer, int i, int i1) {
-                        mediaPlayer.reset();
-
-                        mMPCheckTime = System.nanoTime();
-                        return true;
-                    }
-                };
-
-                MediaPlayer.OnInfoListener infoListener = new MediaPlayer.OnInfoListener() {
-                    @Override
-                    public boolean onInfo(MediaPlayer mediaPlayer, int i, int i1) {
-                        if(i == MediaPlayer.MEDIA_INFO_VIDEO_RENDERING_START) {
-                            mMPCheckTime = System.nanoTime();
-                        }
-
-                        return false;
-                    }
-                };
-
-                MediaPlayer.OnCompletionListener completionListener = new MediaPlayer.OnCompletionListener() {
-                    @Override
-                    public void onCompletion(MediaPlayer mediaPlayer) {
-                        mMPCheckTime = System.nanoTime();
-                    }
-                };
-
-                mVideoView.setOnPreparedListener(pListener);
-                mVideoView.setOnErrorListener(errorListener);
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1) {
-                    mVideoView.setOnInfoListener(infoListener);
-                }
-                mVideoView.setOnCompletionListener(completionListener);
-
-                mVideoView.setVideoPath(playbackUrl);
+                player.prepare(videoSource);
+                player.setPlayWhenReady(true);
             }
         });
     };
+
+
+    private void initExoPlayer() {
+        PlayerView playerView = findViewById(R.id.exoplayer_view);
+        playerView.requestFocus();
+        playerView.setControllerAutoShow(false);
+        playerView.setUseController(false);
+        playerView.setKeepScreenOn(true);
+
+
+        DefaultRenderersFactory rendererFactory = new DefaultRenderersFactory(this,
+                DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
+        TrackSelector trackSelector = new DefaultTrackSelector();
+        DefaultLoadControl.Builder builder = new DefaultLoadControl.Builder();
+        builder.setAllocator(new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE));
+        builder.setBufferDurationsMs(
+                2000,
+                15000,
+                1500,
+                0
+        );
+        LoadControl loadControl = builder.createDefaultLoadControl();
+
+
+        player = ExoPlayerFactory.newSimpleInstance(this, rendererFactory, trackSelector, loadControl);
+        player.addVideoListener(new com.google.android.exoplayer2.video.VideoListener() {
+            @Override
+            public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
+
+            }
+
+            @Override
+            public void onRenderedFirstFrame() {
+                mMPCheckTime = System.nanoTime();
+            }
+        });
+
+        playerView.setPlayer(player);
+    }
 
 
     // Channel list related
@@ -384,7 +400,7 @@ public class MainActivity extends Activity {
                 }
                 final List fList = channelList;
 
-                ListView list = (ListView) findViewById(R.id.list_view);
+                ListView list = findViewById(R.id.list_view);
 
                 SimpleAdapter listItemAdapter = new SimpleAdapter(MainActivity.this,
                         channelList,

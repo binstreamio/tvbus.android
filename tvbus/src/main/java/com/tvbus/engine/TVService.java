@@ -41,9 +41,6 @@ public class TVService extends Service {
 
 		@Override
 		public void run() {
-			tvcore.setPlayPort(8902);
-		    tvcore.setServPort(4010);
-
 		    int retv = tvcore.init(getApplicationContext());
 
 		    if(retv == 0) {
