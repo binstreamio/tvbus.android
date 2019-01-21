@@ -12,6 +12,10 @@ Features
 3. HEVC support.
 4. Multiple platform(Android, Windows, macOS) support.
 
+UI
+-----
+<img src="ui.png" alt="hls.gif" height="360px" />
+
 
 How to use
 -----
