@@ -33,8 +33,10 @@ import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.LoadControl;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
+import com.google.android.exoplayer2.extractor.ts.TsExtractor;
 import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
+import com.google.android.exoplayer2.source.ProgressiveMediaSource;
 import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
 import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.ui.PlayerView;
@@ -72,12 +74,6 @@ public class MainActivity extends Activity {
 
         startTVBusService();
 
-        findViewById(R.id.button_refresh).setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                MainActivity.this.loadChannelList();
-            }
-        });
         loadChannelList();
     }
 
@@ -250,12 +246,13 @@ public class MainActivity extends Activity {
             @Override
             public void run() {
                 mMPCheckTime = System.nanoTime() + MP_START_CHECK_INTERVAL;
-                DataSource.Factory dataSourceFactory =
-                        new DefaultDataSourceFactory(MainActivity.this,"tvbus",null);
-                MediaSource videoSource = new ExtractorMediaSource.Factory(dataSourceFactory)
-                            .createMediaSource(Uri.parse(playbackUrl));
 
-                player.prepare(videoSource);
+                DataSource.Factory dataSourceFactory =
+                        new DefaultDataSourceFactory(MainActivity.this, "TVBUS");
+                MediaSource source = new ProgressiveMediaSource.Factory(dataSourceFactory, TsExtractor.FACTORY)
+                        .createMediaSource(Uri.parse(playbackUrl));
+
+                player.prepare(source);
                 player.setPlayWhenReady(true);
             }
         });
@@ -269,22 +266,17 @@ public class MainActivity extends Activity {
         playerView.setUseController(false);
         playerView.setKeepScreenOn(true);
 
-
-        DefaultRenderersFactory rendererFactory = new DefaultRenderersFactory(this,
-                DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
-        TrackSelector trackSelector = new DefaultTrackSelector();
         DefaultLoadControl.Builder builder = new DefaultLoadControl.Builder();
-        builder.setAllocator(new DefaultAllocator(true, C.DEFAULT_BUFFER_SEGMENT_SIZE));
         builder.setBufferDurationsMs(
                 2000,
                 15000,
-                1500,
+                500,
                 0
         );
         LoadControl loadControl = builder.createDefaultLoadControl();
 
 
-        player = ExoPlayerFactory.newSimpleInstance(this, rendererFactory, trackSelector, loadControl);
+        player = new SimpleExoPlayer.Builder(this).setLoadControl(loadControl).build();
         player.addVideoListener(new com.google.android.exoplayer2.video.VideoListener() {
             @Override
             public void onVideoSizeChanged(int width, int height, int unappliedRotationDegrees, float pixelWidthHeightRatio) {
@@ -342,7 +334,7 @@ public class MainActivity extends Activity {
             private String getChannels() {
                 URL url;
                 try {
-                    url = new URL("http://chlist.sopplus.tv/v2/channels");
+                    url = new URL("http://chlist.sopplus.tv/v3/channels");
                 } catch (MalformedURLException e) {
                     Log.d(TAG, e.toString());
                     return null;
