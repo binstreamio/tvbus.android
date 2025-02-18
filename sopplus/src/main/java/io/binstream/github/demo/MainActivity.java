@@ -26,22 +26,15 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import com.google.android.exoplayer2.C;
 import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.DefaultRenderersFactory;
-import com.google.android.exoplayer2.ExoPlayerFactory;
 import com.google.android.exoplayer2.LoadControl;
 import com.google.android.exoplayer2.Player;
 import com.google.android.exoplayer2.SimpleExoPlayer;
 import com.google.android.exoplayer2.extractor.ts.TsExtractor;
-import com.google.android.exoplayer2.source.ExtractorMediaSource;
 import com.google.android.exoplayer2.source.MediaSource;
 import com.google.android.exoplayer2.source.ProgressiveMediaSource;
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelector;
 import com.google.android.exoplayer2.ui.PlayerView;
 import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultAllocator;
 import com.google.android.exoplayer2.upstream.DefaultDataSourceFactory;
 import com.tvbus.engine.TVCore;
 import com.tvbus.engine.TVListener;
@@ -74,7 +67,9 @@ public class MainActivity extends Activity {
 
         startTVBusService();
 
-        loadChannelList();
+        // loadChannelList();
+
+        loadChannelListLocal();
     }
 
     @Override
@@ -178,7 +173,7 @@ public class MainActivity extends Activity {
                 mTmPlayerConn = jsonObj.optInt("hls_last_conn", 0);
                 mBuffer = jsonObj.optInt("buffer", 0);
 
-                statusMessage = "" + mBuffer + "  "
+                statusMessage = mBuffer + "  "
                         + jsonObj.optInt("download_rate", 0) * 8 / 1000 +"K";
                 break;
 
@@ -292,137 +287,56 @@ public class MainActivity extends Activity {
         playerView.setPlayer(player);
     }
 
-
-    // Channel list related
-    private void loadChannelList() {
+    // Channel list related 
+    private void loadChannelListLocal() {
         ((ListView) findViewById(R.id.list_view)).setAdapter(null);
+        final ArrayList<HashMap<String, Object>> channelList = new ArrayList<HashMap<String, Object>>();
 
-        new AsyncTask<Void, Void, List> () {
+        HashMap<String, Object> map = new HashMap<String, Object>();
+        map.put("name", "BBB-H264");
+        map.put("address", "tvbus://4ZACZkKJitMUWJmnmYe7gJb5koaGhv8b1JcvwSoCeT5936qBL14MEVGtaBefW");
+        map.put("from", "BinStream");
+        map.put("type", "public");
+        channelList.add(map);
 
+        HashMap<String, Object> map2 = new HashMap<String, Object>();
+        map2.put("name", "BBB-H265");
+        map2.put("address", "tvbus://5EJDj97SMeKKB8MWLNTe1AenAPmJp38C72BTkvBvTvxfiBVnGBAnhuEEe8jdj");
+        map2.put("from", "BinStream");
+        map2.put("type", "public");
+        channelList.add(map2);
+
+
+        Log.d(TAG+"OLIVEN", channelList.toString());
+        ListView list = findViewById(R.id.list_view);
+
+        SimpleAdapter listItemAdapter = new SimpleAdapter(MainActivity.this,
+                channelList,
+                R.layout.list_items,
+                new String[] { "name", "from" },
+                new int[] { R.id.ItemTitle, R.id.ItemText }
+        );
+
+        list.setAdapter(listItemAdapter);
+
+
+        list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
-            protected List doInBackground(Void... voids) {
-                return parseChannels(getChannels());
-            }
+            public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
+                HashMap<String, Object> chInfo = (HashMap<String, Object>)channelList.get(arg2);
 
-            private List parseChannels(String channelsStr) {
-                if(channelsStr == null) {
-                    return null;
+                String type = chInfo.get("type").toString();
+                String address = chInfo.get("address").toString();
+
+                if("private".equals(type)) {
+                    // set the accessCode from user input
+                    startChannel(address, "1111");
                 }
-
-                try {
-                    ArrayList<HashMap<String, Object>> channelList = new ArrayList<HashMap<String, Object>>();
-
-                    JSONArray array = new JSONArray(channelsStr);
-
-                    for(int i = 0; i < array.length(); i ++) {
-                        HashMap<String, Object> map = new HashMap<String, Object>();
-                        map.put("name", array.getJSONObject(i).getString("name"));
-                        map.put("address", array.getJSONObject(i).getString("address"));
-                        map.put("from", array.getJSONObject(i).getString("from"));
-                        map.put("type", array.getJSONObject(i).getString("type"));
-                        channelList.add(map);
-                    }
-
-                    return channelList;
-                } catch (JSONException e) {
-                    e.printStackTrace();
-
-                    return null;
+                else {
+                    startChannel(address, null);
                 }
             }
-
-            private String getChannels() {
-                URL url;
-                try {
-                    url = new URL("http://chlist.sopplus.tv/v3/channels");
-                } catch (MalformedURLException e) {
-                    Log.d(TAG, e.toString());
-                    return null;
-                }
-
-                HttpURLConnection urlConnection = null;
-                InputStream inputStream = null;
-                String content = null;
-                try {
-                    urlConnection = (HttpURLConnection) url.openConnection();
-                    urlConnection.setConnectTimeout(15000);
-                    urlConnection.setReadTimeout(10000);
-
-                    inputStream = urlConnection.getInputStream();
-                    BufferedReader br = new BufferedReader(new InputStreamReader(inputStream));
-                    StringBuilder sb = new StringBuilder();
-                    String output;
-
-                    if (urlConnection.getResponseCode() != 200) {
-                        return null;
-                    }
-
-                    while ((output = br.readLine()) != null) {
-                        sb.append(output);
-                        content = sb.toString();
-                    }
-                } catch (Exception e) {
-                    Log.d(TAG, e.toString());
-                    return null;
-                } finally {
-                    if (urlConnection != null) {
-                        urlConnection.disconnect();
-                    }
-                    if (inputStream != null) {
-                        try {
-                            inputStream.close();
-                        } catch (Exception ignore) {
-                        }
-                    }
-                }
-
-                return content;
-            }
-
-            @Override
-            protected void onPostExecute(List channelList) {
-                super.onPostExecute(channelList);
-
-                refreshChannelList(channelList);
-            }
-
-            private void refreshChannelList(List channelList) {
-                if(channelList == null) {
-                    return;
-                }
-                final List fList = channelList;
-
-                ListView list = findViewById(R.id.list_view);
-
-                SimpleAdapter listItemAdapter = new SimpleAdapter(MainActivity.this,
-                        channelList,
-                        R.layout.list_items,
-                        new String[] { "name", "from" },
-                        new int[] { R.id.ItemTitle, R.id.ItemText }
-                );
-
-                list.setAdapter(listItemAdapter);
-
-
-                list.setOnItemClickListener(new AdapterView.OnItemClickListener() {
-                    @Override
-                    public void onItemClick(AdapterView<?> arg0, View arg1, int arg2, long arg3) {
-                        HashMap<String, Object> chInfo = (HashMap<String, Object>)fList.get(arg2);
-
-                        String type = chInfo.get("type").toString();
-                        String address = chInfo.get("address").toString();
-
-                        if("private".equals(type)) {
-                            // set the accessCode from user input
-                            startChannel(address, "1111");
-                        }
-                        else {
-                            startChannel(address, null);
-                        }
-                    }
-                });
-            }
-        }.execute();
+        });
     }
 }
 
